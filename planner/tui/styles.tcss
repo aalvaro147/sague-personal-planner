@@ -1,0 +1,347 @@
+Screen {
+    background: #101820;
+    color: #e7edf2;
+}
+
+Header {
+    background: #172a3a;
+    color: #f3f7fa;
+}
+
+Footer {
+    background: #172a3a;
+    color: #d3e2ec;
+}
+
+.top-nav {
+    height: 3;
+    padding: 0 1;
+    background: #172a3a;
+    align: center middle;
+}
+
+.brand {
+    width: 1fr;
+    color: #75d6b1;
+    text-style: bold;
+    content-align: left middle;
+}
+
+.date-toolbar, .filter-toolbar, .action-bar {
+    height: auto;
+    min-height: 3;
+    padding: 0 1;
+    align: center middle;
+}
+
+.date-toolbar Input {
+    width: 1fr;
+    margin: 0 1;
+}
+
+#agenda-layout {
+    height: 1fr;
+    padding: 0 1 1 1;
+}
+
+#agenda-main {
+    width: 3fr;
+    height: 1fr;
+    border: round #345064;
+    padding: 0 1;
+}
+
+#agenda-sidebar {
+    width: 1fr;
+    min-width: 28;
+    height: 1fr;
+    border: round #345064;
+    padding: 0 1;
+    margin-left: 1;
+}
+
+.section-heading {
+    height: 3;
+    padding: 1 1 0 1;
+    color: #75d6b1;
+    text-style: bold;
+}
+
+ListView {
+    height: 1fr;
+    border: none;
+    background: #101820;
+}
+
+ListItem {
+    height: auto;
+    min-height: 3;
+    padding: 0 1;
+}
+
+ListItem.--highlight {
+    background: #244156;
+    color: #ffffff;
+}
+
+.free-gap {
+    color: #8ca3b3;
+    text-style: italic;
+}
+
+.task-row {
+    height: 4;
+    border-bottom: solid #253b4c;
+}
+
+.task-row.overdue {
+    color: #ff7777;
+    text-style: bold;
+}
+
+.event-row {
+    height: 4;
+    border-bottom: solid #253b4c;
+}
+
+.status {
+    color: #9db1bf;
+    padding: 0 1;
+}
+
+.dialog {
+    width: 64;
+    max-width: 90%;
+    max-height: 90%;
+    padding: 1 2;
+    border: round #75d6b1;
+    background: #172a3a;
+    overflow-y: auto;
+    align: center middle;
+}
+
+.form-dialog {
+    height: auto;
+}
+
+.task-form-dialog {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.task-form-dialog Label {
+    margin-top: 0;
+}
+
+.task-form-dialog .dialog-title {
+    margin-bottom: 0;
+}
+
+.dialog-title {
+    color: #75d6b1;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.form-dialog Label {
+    margin-top: 1;
+}
+
+.form-dialog Input, .form-dialog Select {
+    width: 1fr;
+}
+
+.field-error {
+    color: #ff8585;
+    display: none;
+}
+
+.form-help {
+    color: $text-muted;
+}
+
+.form-feedback {
+    color: #ffd27d;
+    display: none;
+    height: auto;
+    min-height: 0;
+    margin-top: 1;
+}
+
+.form-actions {
+    height: auto;
+    margin-top: 1;
+    align: right middle;
+}
+
+.form-actions Button {
+    margin-left: 1;
+}
+
+.confirm-overlap {
+    display: none;
+}
+
+#review-layout {
+    layout: horizontal;
+    height: 1fr;
+    padding: 0 1 1 1;
+}
+
+#review-layout.compact {
+    layout: vertical;
+}
+
+#review-main {
+    width: 2fr;
+    height: 1fr;
+    border: round #345064;
+    padding: 0 1;
+}
+
+#review-layout.compact #review-main {
+    width: 1fr;
+    height: 1fr;
+}
+
+#review-sidebar {
+    width: 1fr;
+    min-width: 28;
+    height: 1fr;
+    border: round #345064;
+    padding: 0 1;
+    margin-left: 1;
+}
+
+#review-layout.compact #review-sidebar {
+    width: 1fr;
+    height: auto;
+    max-height: 12;
+    min-width: 0;
+    margin-left: 0;
+    margin-bottom: 1;
+}
+
+.review-item {
+    height: auto;
+    min-height: 5;
+    padding: 1;
+    border: round #345064;
+}
+
+.review-fields {
+    height: auto;
+    min-height: 3;
+    align: center middle;
+}
+
+.review-fields Label {
+    width: auto;
+    margin: 0 1 0 0;
+}
+
+.review-fields Input {
+    width: 12;
+    margin: 0 1 0 0;
+}
+
+#review-duration {
+    width: 10;
+}
+
+#review-date {
+    width: 14;
+}
+
+#review-due {
+    width: 1fr;
+}
+
+.review-final {
+    height: auto;
+    min-height: 5;
+    padding: 1;
+    color: #75d6b1;
+}
+
+.review-agenda {
+    height: auto;
+    padding: 0 1;
+}
+
+#review-message {
+    height: auto;
+}
+
+WeekScreen {
+    layout: vertical;
+}
+
+.week-grid {
+    height: 1fr;
+    min-height: 10;
+    padding: 0 1;
+}
+
+.week-day {
+    width: 1fr;
+    min-width: 16;
+    height: 1fr;
+    border: round #345064;
+    padding: 0 1;
+    margin-right: 1;
+}
+
+.week-day Button {
+    width: 1fr;
+    margin: 0;
+}
+
+.week-summary {
+    height: 2;
+    color: #9db1bf;
+    content-align: center middle;
+}
+
+.week-summary.heavy-load {
+    color: #ff8585;
+    text-style: bold;
+}
+
+.week-day ListView {
+    height: 1fr;
+}
+
+.week-day ListItem {
+    min-height: 2;
+    padding: 0;
+}
+
+.week-compact {
+    display: none;
+    height: 1fr;
+    min-height: 10;
+    padding: 0 1;
+}
+
+.week-compact .week-day {
+    width: 1fr;
+    height: auto;
+    min-height: 8;
+    margin: 0 0 1 0;
+}
+
+#week-due-panel {
+    height: 12;
+    min-height: 8;
+    border-top: solid #345064;
+    padding: 0 1;
+}
+
+#week-due-panel ListView {
+    height: 1fr;
+}
+
+#week-due-panel ListItem {
+    min-height: 2;
+}

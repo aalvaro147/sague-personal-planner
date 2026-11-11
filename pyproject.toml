@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "planner"
+version = "0.1.0"
+description = "A personal task planner with a Textual terminal interface"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "platformdirs>=4.2",
+    "textual>=0.80,<7",
+]
+
+[project.scripts]
+planificador = "planner.tui.app:main"
+
+[tool.setuptools.packages.find]
+include = ["planner*"]
+
+[tool.setuptools.package-data]
+"planner.tui" = ["styles.tcss"]
