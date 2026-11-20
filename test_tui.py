@@ -512,3 +512,180 @@ async def _run_week_compact_workflow():
             app.screen.query_one(f"#compact-panel-{index}")
             for index in range(7)
         )
+
+
+# ---------------------------------------------------------------------------
+# Undo / Redo TUI tests
+# ---------------------------------------------------------------------------
+
+
+def test_undo_redo_create_task_from_agenda():
+    asyncio.run(_run_undo_redo_create_task())
+
+
+async def _run_undo_redo_create_task():
+    app = PlannerApp()
+
+    async with app.run_test(size=(100, 50)) as pilot:
+        await pilot.pause()
+        assert isinstance(app.screen, AgendaScreen)
+
+        # Add a task via the form
+        await pilot.click("#add-task")
+        await pilot.pause()
+        assert isinstance(app.screen, TaskForm)
+        app.screen.query_one("#task-title", Input).value = "Undo test task"
+        await pilot.click("#save")
+        await pilot.pause()
+
+        tasks = core.list_tasks()
+        assert any(t.title == "Undo test task" for t in tasks)
+
+        # Undo from agenda screen (keyboard shortcut u)
+        await pilot.press("u")
+        await pilot.pause()
+
+        tasks_after = core.list_tasks()
+        assert not any(t.title == "Undo test task" for t in tasks_after if not t.deleted)
+
+        # Redo (keyboard shortcut U)
+        await pilot.press("U")
+        await pilot.pause()
+
+        tasks_redone = core.list_tasks()
+        assert any(t.title == "Undo test task" for t in tasks_redone if not t.deleted)
+
+
+def test_undo_works_from_tasks_screen():
+    asyncio.run(_run_undo_from_tasks_screen())
+
+
+async def _run_undo_from_tasks_screen():
+    app = PlannerApp()
+
+    async with app.run_test(size=(100, 50)) as pilot:
+        await pilot.pause()
+
+        # Create a task first
+        core.create_task("Tasks screen undo task")
+
+        # Navigate to tasks screen
+        await pilot.press("t")
+        await pilot.pause()
+        assert isinstance(app.screen, TasksScreen)
+
+        tasks_before = [t for t in core.list_tasks() if not t.deleted]
+        assert len(tasks_before) == 1
+
+        # Undo from tasks screen
+        await pilot.press("u")
+        await pilot.pause()
+
+        tasks_after = [t for t in core.list_tasks() if not t.deleted]
+        assert len(tasks_after) == 0
+
+
+def test_undo_works_from_events_screen():
+    asyncio.run(_run_undo_from_events_screen())
+
+
+async def _run_undo_from_events_screen():
+    from datetime import date, timedelta
+    tomorrow = str(date.today() + timedelta(days=1))
+
+    app = PlannerApp()
+
+    async with app.run_test(size=(100, 50)) as pilot:
+        await pilot.pause()
+
+        # Create an event
+        core.create_event("Test event", tomorrow, "10:00", "11:00")
+
+        # Navigate to events screen
+        await pilot.press("v")
+        await pilot.pause()
+        assert isinstance(app.screen, EventsScreen)
+
+        events_before = [e for e in core.load_events() if not e.deleted]
+        assert len(events_before) == 1
+
+        # Undo from events screen
+        await pilot.press("u")
+        await pilot.pause()
+
+        events_after = [e for e in core.load_events() if not e.deleted]
+        assert len(events_after) == 0
+
+
+def test_undo_works_from_week_screen():
+    asyncio.run(_run_undo_from_week_screen())
+
+
+async def _run_undo_from_week_screen():
+    app = PlannerApp()
+
+    async with app.run_test(size=(160, 50)) as pilot:
+        await pilot.pause()
+
+        # Create a task
+        core.create_task("Week screen undo task")
+
+        # Navigate to week screen
+        await pilot.press("w")
+        await pilot.pause()
+        assert isinstance(app.screen, WeekScreen)
+
+        tasks_before = [t for t in core.list_tasks() if not t.deleted]
+        assert len(tasks_before) == 1
+
+        # Undo
+        await pilot.press("u")
+        await pilot.pause()
+
+        tasks_after = [t for t in core.list_tasks() if not t.deleted]
+        assert len(tasks_after) == 0
+
+
+def test_nothing_to_undo_shows_notification():
+    asyncio.run(_run_nothing_to_undo())
+
+
+async def _run_nothing_to_undo():
+    app = PlannerApp()
+
+    async with app.run_test(size=(100, 50)) as pilot:
+        await pilot.pause()
+        assert isinstance(app.screen, AgendaScreen)
+
+        # No history yet — press u should not crash
+        await pilot.press("u")
+        await pilot.pause()
+
+        # App is still running (no crash)
+        assert isinstance(app.screen, AgendaScreen)
+
+
+def test_undo_redo_via_ctrl_r():
+    asyncio.run(_run_ctrl_r_redo())
+
+
+async def _run_ctrl_r_redo():
+    app = PlannerApp()
+
+    async with app.run_test(size=(100, 50)) as pilot:
+        await pilot.pause()
+
+        # Create and undo
+        core.create_task("Ctrl-R task")
+        await pilot.press("u")
+        await pilot.pause()
+
+        tasks = [t for t in core.list_tasks() if not t.deleted]
+        assert len(tasks) == 0
+
+        # Redo via ctrl+r
+        await pilot.press("ctrl+r")
+        await pilot.pause()
+
+        tasks_after = [t for t in core.list_tasks() if not t.deleted]
+        assert len(tasks_after) == 1

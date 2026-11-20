@@ -4,7 +4,7 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Collapsible, Input, Label, Select, Static
+from textual.widgets import Button, Collapsible, Input, Label, Select, Static, TextArea
 
 from planner import core
 from planner.tui.screens.recurrence_form import (
@@ -47,6 +47,15 @@ class TaskForm(ModalScreen[bool]):
                 id="task-priority",
             )
             yield Static("", classes="field-error", id="task-priority-error")
+            with Collapsible(
+                title="Notes (optional)",
+                collapsed=task.notes is None if task else True,
+                id="task-notes-section",
+            ):
+                yield TextArea(
+                    task.notes or "" if task else "",
+                    id="task-notes",
+                )
             with Collapsible(
                 title="Repeat",
                 collapsed=True,
@@ -104,6 +113,12 @@ class TaskForm(ModalScreen[bool]):
         title = self.query_one("#task-title", Input).value
         due_text = self.query_one("#task-due", Input).value.strip()
         priority = self.query_one("#task-priority", Select).value
+        notes_widgets = self.query("#task-notes")
+        notes = (
+            notes_widgets.first().text.strip() or None
+            if notes_widgets
+            else None
+        )
         try:
             due = core.parse_due_date(due_text)
             recurrence = read_recurrence_fields(
@@ -118,6 +133,7 @@ class TaskForm(ModalScreen[bool]):
                     due=due,
                     priority=priority,
                     recurrence=recurrence,
+                    notes=notes,
                 )
                 self.dismiss(True)
                 return
@@ -137,6 +153,7 @@ class TaskForm(ModalScreen[bool]):
                 "due": due,
                 "priority": str(priority),
                 "recurrence": recurrence,
+                "notes": notes,
                 "block_date": None,
                 "start": start,
                 "end": end,
@@ -192,6 +209,7 @@ class TaskForm(ModalScreen[bool]):
                     values["due"],
                     values["priority"],
                     values["recurrence"],
+                    notes=values.get("notes"),
                 )
             else:
                 core.create_task_with_block(
@@ -202,6 +220,7 @@ class TaskForm(ModalScreen[bool]):
                     values["due"],
                     values["priority"],
                     values["recurrence"],
+                    notes=values.get("notes"),
                 )
         except (OSError, ValueError) as error:
             self._show_message("task-feedback", str(error))

@@ -5,7 +5,7 @@ from textual.containers import Horizontal
 from textual.screen import Screen
 from textual.widgets import Button, Label, ListItem, ListView, Select, Static
 
-from planner import core
+from planner import clock, core
 from planner.tui.screens.confirm_dialog import ConfirmDialog
 from planner.tui.screens.task_detail import TaskDetailDialog
 from planner.tui.screens.task_form import TaskForm
@@ -34,6 +34,8 @@ class TasksScreen(Screen):
             yield Button("Agenda", id="open-agenda")
             yield Button("Week", id="open-week")
             yield Button("Events", id="open-events")
+            yield Button("Undo", id="undo")
+            yield Button("Redo", id="redo")
         with Horizontal(classes="filter-toolbar"):
             yield Label("Show")
             yield Select(FILTERS, value="pending", id="task-filter")
@@ -59,7 +61,7 @@ class TasksScreen(Screen):
             self.selected_task = None
             task_list = self.query_one("#task-list", ListView)
             await task_list.clear()
-            today = date.today()
+            today = clock.today()
             for task in self.tasks:
                 status = "DONE" if task.done else "PENDING"
                 due = task.due.isoformat() if task.due else "No due date"
@@ -96,6 +98,10 @@ class TasksScreen(Screen):
             self.app.switch_mode("events")
         elif button_id == "open-week":
             self.app.switch_mode("week")
+        elif button_id == "undo":
+            self.app.action_undo()
+        elif button_id == "redo":
+            self.app.action_redo()
         elif button_id == "add-task":
             self.add_item()
         elif button_id == "edit-task":

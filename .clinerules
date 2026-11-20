@@ -1,0 +1,26 @@
+# .clinerules - Personal Planner (`planner`)
+
+## 1. Stack Tecnológico y Dependencias
+- **Lenguaje**: Python >=3.10
+- **Framework UI (TUI)**: Textual (`textual>=0.80,<7`)
+- **Utilidades**: platformdirs (`platformdirs>=4.2`)
+- **Testing**: pytest (`pytest`, `typeguard`)
+- **Gestor de dependencias**: pip / pipx / setuptools (`pyproject.toml`)
+
+## 2. Mapa de Módulos (Dónde tocar según el tipo de cambio)
+- **UI / Frontend (TUI)**: `planner/tui/` (pantallas en `planner/tui/screens/`, estilos en `planner/tui/styles.tcss`, app principal en `planner/tui/app.py`).
+- **Lógica / Servicios / Dominio**: `planner/core.py` (API y persistencia JSON), `planner/history.py` (historial), `planner/recurrence.py` (recurrencias), `planner/review.py` (revisión diaria).
+- **CLI / Entradas**: `planner/cli.py`, `planner/__main__.py`.
+- **Configuración**: `pyproject.toml`, `requirements.txt`.
+- **Tests**: `test_core.py`, `test_history.py`, `test_review.py`, `test_review_tui.py`, `test_tui.py`.
+
+## 3. Comandos de Ejecución
+- **Test aislado**: `pytest test_core.py` (o el test correspondiente al módulo modificado).
+- **Linter / Formateador**: Verificación de sintaxis con `python -m py_compile planner/**/*.py`.
+- **Levantar en local**: `.venv/bin/python -m planner` o `planificador` (con entorno virtual activado o instalado en modo editable con `pip install -e .`).
+
+## 4. Reglas Estrictas de Ejecución
+1. **Ediciones parciales**: Usar siempre la herramienta `editor` (`replace_in_file` o inserción precisa) en lugar de reescribir archivos enteros.
+2. **Ejecución de tests**: Nunca ejecutar toda la suite de tests completa si hay más de 10 archivos de test; ejecutar solo el test unitario/de integración relacionado con el módulo modificado.
+3. **Consulta previa**: Antes de buscar archivos a ciegas en el repositorio, consultar obligatoriamente este `.clinerules` y `PROJECT_MAP.md`.
+4. **Actualización de progreso**: Al finalizar cualquier tarea de código, actualizar la sección de "Estado y cambios recientes" en `PROGRESS.md`.

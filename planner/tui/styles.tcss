@@ -125,8 +125,17 @@ ListItem.--highlight {
 }
 
 .task-form-dialog {
-    padding-top: 0;
-    padding-bottom: 0;
+    padding: 0 2;
+    margin-top: 0;
+}
+
+.task-form-dialog Collapsible {
+    margin: 0;
+    padding: 0;
+}
+
+.task-form-dialog .form-actions {
+    margin-top: 0;
 }
 
 .task-form-dialog Label {
@@ -345,3 +354,270 @@ WeekScreen {
 #week-due-panel ListItem {
     min-height: 2;
 }
+
+.note-row {
+    height: 4;
+    border-bottom: solid #253b4c;
+}
+
+.note-row.pinned {
+    color: #75d6b1;
+    text-style: bold;
+}
+
+.note-detail-dialog {
+    width: 80;
+    max-width: 90%;
+    height: 80%;
+}
+
+#detail-body-container {
+    height: 1fr;
+    margin: 1 0;
+    border: solid #345064;
+    padding: 1;
+}
+
+#agenda-notes-container {
+    height: auto;
+    max-height: 14;
+    border-top: solid #345064;
+    margin-top: 1;
+}
+
+#agenda-notes-list {
+    height: auto;
+    max-height: 10;
+}
+
+.notes-header-bar {
+    height: 3;
+    padding: 0 1;
+    align: left middle;
+}
+
+.search-dialog {
+    width: 80;
+    max-width: 90%;
+    height: 80%;
+}
+
+#search-results-list {
+    height: 1fr;
+    margin-top: 1;
+}
+
+.search-result-note {
+    height: auto;
+    min-height: 3;
+    border-bottom: solid #253b4c;
+    color: #75d6b1;
+}
+
+.search-result-task {
+    height: auto;
+    min-height: 2;
+    border-bottom: solid #253b4c;
+}
+
+.habit-row {
+    height: auto;
+    min-height: 3;
+    border-bottom: solid #253b4c;
+    padding: 0 1;
+}
+
+.habit-row.archived {
+    color: #607d8b;
+}
+
+#habit-weekdays-container {
+    height: auto;
+    margin: 1 0;
+}
+
+#habit-weekdays-container Checkbox {
+    margin-right: 1;
+}
+
+.stat-card {
+    width: 1fr;
+    border: solid #345064;
+    padding: 1;
+    margin: 0 1;
+    height: auto;
+}
+
+#habit-cards-container {
+    height: auto;
+    margin: 1 0;
+}
+
+#habit-sparkline, #overview-sparkline {
+    height: 3;
+    margin: 1 0;
+}
+
+#overview-chart-bar {
+    height: auto;
+    min-height: 1;
+    margin: 1 0;
+}
+
+#habits-legend, #heatmap-legend {
+    padding: 0 1;
+    margin: 0 0;
+    color: #a0b0c0;
+}
+
+#habit-heatmap {
+    padding: 1;
+    border: solid #345064;
+    height: auto;
+    margin: 1 0;
+}
+
+#habit-detail-body {
+    height: 1fr;
+    margin: 1 0;
+}
+
+/* Live Day View Styles */
+.agenda-progress-bar {
+    padding: 0 1;
+    color: #75d6b1;
+    text-style: bold;
+}
+
+.agenda-legend {
+    padding: 0 1;
+    color: #9db1bf;
+    margin-bottom: 1;
+}
+
+.now-line {
+    background: transparent;
+    color: #e0af68;
+    align: center middle;
+    text-align: center;
+    height: 1;
+}
+
+.now-line-text {
+    color: #e0af68;
+    text-style: bold;
+    text-align: center;
+}
+
+.current-item {
+    background: #1f384d;
+    color: #75d6b1;
+    text-style: bold;
+}
+
+.done-item {
+    color: #6272a4;
+}
+
+.missed-item {
+    color: #ff8585;
+}
+
+#complete-task-dialog {
+    width: 60;
+    max-width: 90%;
+    height: auto;
+    padding: 1 2;
+    border: round #75d6b1;
+    background: #172a3a;
+    align: center middle;
+}
+
+#complete-task-prompt {
+    margin-bottom: 1;
+    text-style: bold;
+    text-align: center;
+}
+
+#complete-task-actions {
+    align: center middle;
+    height: 3;
+}
+
+#complete-task-actions Button {
+    margin: 0 1;
+}
+
+/* Month View Styles */
+#month-container {
+    height: 1fr;
+    width: 1fr;
+}
+
+#month-main {
+    height: 1fr;
+    width: 3fr;
+}
+
+#month-grid-headers {
+    grid-size: 7 1;
+    grid-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    height: 1;
+    margin-bottom: 0;
+}
+
+#month-grid {
+    grid-size: 7 6;
+    grid-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-rows: 1fr 1fr 1fr 1fr 1fr 1fr;
+    height: 1fr;
+    border: solid #345064;
+}
+
+#month-sidebar {
+    height: 1fr;
+    width: 1fr;
+    border-left: solid #345064;
+    padding: 1;
+}
+
+.month-weekday-header {
+    text-style: bold;
+    color: #75d6b1;
+    text-align: center;
+}
+
+.month-cell {
+    border: solid #253b4c;
+    height: 1fr;
+    padding: 0 1;
+    overflow-y: hidden;
+}
+
+.month-cell.out-of-month {
+    color: #556677;
+}
+
+.month-cell.today-cell {
+    border: solid #75d6b1;
+}
+
+.month-cell.selected-cell {
+    background: #1f384d;
+}
+
+#month-compact-list {
+    height: 1fr;
+    width: 1fr;
+    display: none;
+}
+
+.month-sidebar-summary {
+    color: #75d6b1;
+    margin-bottom: 1;
+}
+
+.month-sidebar-agenda {
+    margin-bottom: 1;
+}
+

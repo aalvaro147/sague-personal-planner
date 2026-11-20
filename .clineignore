@@ -1,0 +1,41 @@
+# Git
+.git/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# Cachés y archivos de compilación de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Cachés de pruebas y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Empaquetado y distribución
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Datos locales, respaldos y logs
+planificador/
+*.jsonl
+*.bak
+*.log
+notas
+
+# Lockfiles pesados
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+poetry.lock
+Pipfile.lock

@@ -70,3 +70,4 @@ pytest test_review_tui.py
 4. Ensure all tests pass (`pytest`).
 5. Commit with clear, concise messages.
 6. Open a Pull Request against the `main` branch with a summary of the changes and motivation.
+

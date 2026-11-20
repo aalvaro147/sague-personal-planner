@@ -168,8 +168,8 @@ Press `q` or `Escape` to leave a review without undoing completed choices.
 Press `w` in the Textual interface to open the weekly agenda. Use `[` and `]`
 to move between weeks and `0` to return to the current week. Select a day and a
 task in the “Due this week without a planned block” panel, then press `p` to
-schedule it for that day. The layout switches to a vertical list automatically
-when the terminal is too narrow for seven columns.
+schedule it for that day. Completed blocks display a `✓` checkmark. The layout switches
+to a vertical list automatically when the terminal is too narrow for seven columns.
 
 Use the “Week starts” button to switch between Monday and Sunday. The selection
 is saved in the planner data directory (see `planificador --data-dir`); Monday
@@ -183,6 +183,76 @@ defaults to the day being viewed.
 
 The weekly agenda also has **Add task**; it uses the selected day as the
 planning-date context, or leaves the date blank if no day is selected.
+
+## Live Day Agenda & Block Completion
+
+The daily agenda serves as a live working dashboard for the day:
+
+- **Block Statuses:** Each block is either `planned` or `done`. Completing a block preserves it in history and keeps its scheduled time in day load and gap calculations.
+- **Completing Blocks vs Tasks:**
+  - Press `x`: toggles the selected block between `done` and `planned`. If marking done and it is the last planned block for that task from today onward, a prompt asks whether to complete the whole task.
+  - Press `X` (capital): immediately marks the block done and completes the task (and schedules the next recurring instance if applicable) in a single action.
+  - Events display a notification when pressing `x` since events cannot be completed.
+- **Live Day Timeline:**
+  - **Now-line:** A horizontal indicator (`──── 14:32 ────`) shows the current time position.
+  - **Item Markers:** `▶` current item in progress, `✓` completed block, `!` missed block, and `·` upcoming item.
+  - **Progress Header:** Displays `completed/total blocks · completed of planned time · next: <task> <time>`.
+  - **Auto-refresh:** Refreshes automatically every 30 seconds while preserving the currently selected item.
+- **Close the Day ("Worked on it"):** In the "Close the day" review (`c`), press `w` on a missed block to mark it done without completing the entire task. The final summary starts with `Today: X/Y blocks done`.
+
+## Monthly Overview
+
+Press `M` (or `Shift+M`) from any screen to open the 7-column monthly overview calendar:
+
+- **Day Indicators:**
+  - Load indicators: `○` (no scheduled time), `◔` light (< 2h), `◑` medium (< 5h), `●` heavy (>= 5h).
+  - Due task indicator: `!` marks days with tasks due.
+  - Previews: Displays up to 3 scheduled blocks or events (with `↻` indicating recurring series).
+- **Side Panel:** Shows detailed summary of planned hours, scheduled items, and notes for the selected date.
+- **Navigation & Shortcuts:**
+  - Arrow keys or `h` / `j` / `k` / `l` navigate cell-by-cell (horizontally day-by-day, vertically week-by-week).
+  - `[` and `]` navigate to the previous/next month; `0` returns to today.
+  - `Enter` or double-clicking any cell opens the day agenda for that date.
+  - `a` creates a task with the date preloaded; `v` creates an event.
+- **Responsive Layout:** Automatically switches to a vertical compact list on narrow screens (< 90 columns).
+
+## Undo and redo
+
+Press `u` from any screen to undo the last action, or `U` / `ctrl+r` to redo it.
+Actions are also accessible via buttons/mouse from the top navigation bar.
+
+- **History Location:** Recorded entries are stored as individual JSON files in the `history/` directory inside the planner data location (see `planificador --data-dir`).
+- **History Limit:** Stores up to 50 entries by default (configurable in `settings.json`). Exceeding the limit automatically removes the oldest entry. History persists across application restarts.
+- **What is covered:** Creating, editing, and deleting tasks or events, marking tasks as done (including recurring tasks and their spawned instances), scheduling/moving/removing blocks, deferring tasks, and all decisions made during review flows ("Plan tomorrow" and "Close the day").
+- **What is not covered:** Settings and preference changes, screen navigation or cancellation, and external file edits. If files are modified outside the app between actions, undo/redo safely refrains from overwriting changes and notifies the user.
+
+## Notes
+
+Press `m` in the Textual interface to open the Notes screen. Notes are free-form entries with Markdown support in the body, an optional title (up to 120 characters), tags, an optional project, and an assigned date.
+
+- **Default Date & Agenda:** When creating a note, its date defaults to the current day (or the day currently viewed on the agenda). The daily agenda features a dedicated **Notes** section displaying all active notes for that day, and pressing `Enter` on a note opens it in a full-screen Markdown viewer. In narrow terminal windows, the daily agenda notes list compacts cleanly to show note titles.
+- **Pinning & Archiving:** Notes can be pinned with `p` to stay pinned at the top of the list, ordered by date and recent update. Notes can be archived with `x` to hide them from standard lists and views without deleting them. Archiving a note automatically unpins it, and archived notes cannot be pinned. Use the **Show archived** toggle to inspect archived entries.
+- **Projects Integration:** Projects display their assigned notes in project details. Deleting a project unassigns its tasks and notes cleanly in a single action that can be completely reverted with `u` (undo).
+- **Search Syntax:** Press `/` from anywhere in the app to open the unified search modal:
+  - `type:note` restricts results to notes; `type:task` restricts results to tasks.
+  - `is:pinned` finds pinned notes.
+  - `is:archived` allows searching through archived notes (which are hidden by default).
+  - `date:today`, `date:yesterday`, `date:week`, or `date:YYYY-MM-DD` filters by calendar date.
+  - `#tag` or `tag:name` filters by tags, and `project:name` filters by project.
+  - Terms are evaluated case-insensitively and accent-insensitively across title, body, tags, and project name. Note results display a `[N]` marker, metadata, and an excerpt (`snippet`) centered around matches in the body.
+
+## Habits
+
+Press `b` (or `H`) in the Textual interface to open the Habits screen. Habits support daily or specific-weekday schedules, tracking completions, streaks, and performance over time.
+
+- **Calculation Rules:**
+  - **Accountable Days:** A scheduled day counts toward statistics only if it is in the past, or if it is today and has already been logged. Today without a log does not break or count toward streaks.
+  - **Past Days Unlogged:** Any scheduled day prior to today left unlogged automatically counts as missed.
+  - **Excused Days:** Marking a day as excused (`skipped`) neither counts as done nor missed and protects existing streaks.
+  - **Streaks & Rates:** Current streak counts consecutive completions going backwards from the latest accountable day. Overall and 30-day completion rates compute `done / (done + missed)` (excluding skipped days).
+- **Daily View & Actions:** Navigate days using `[` and `]` (or `0` for today; future dates are blocked). Press `d` for done, `m` for missed, `e` for excused, or `x` to clear a log. Press `a` to create a habit, `E` to edit, `r` to archive, or `Delete` to remove.
+- **Detail & Overview:** Press `Enter` on any habit to inspect cards with current streak, best streak, 7/30/all-time completion rates, weekday distribution, a 26-week activity heatmap, and a 30-day sparkline trend. The **Overview** tab displays aggregate completion charts (with 7, 30, and 90-day filters), best/worst performers, and ranking tables.
+- **Close the Day Integration:** Press `c` to close the day. After reviewing missed work blocks, the workflow steps through today's scheduled habits with instant action bindings (`d`, `m`, `e`, `k` to skip for later, and `a` to create a habit). If earlier days have unlogged habits, a catch-up prompt allows catching up immediately. The final summary highlights habit completion numbers and active streaks. All decisions support full undo (`u`) and redo (`U`).
 
 ## Test
 

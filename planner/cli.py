@@ -2,7 +2,7 @@ import sys
 from datetime import date
 from typing import Any
 
-from planner import core
+from planner import clock, core
 
 
 COLORS = {
@@ -81,7 +81,7 @@ def due_status(due: date | None) -> str:
     if due is None:
         return "No due date"
 
-    days_remaining = (due - date.today()).days
+    days_remaining = (due - clock.today()).days
     if days_remaining < 0:
         days_overdue = abs(days_remaining)
         unit = "day" if days_overdue == 1 else "days"
@@ -106,7 +106,7 @@ def display_tasks(tasks: list[core.Task]) -> None:
             f"{number:>2}. [{status}] [{PRIORITY_LABELS.get(task.priority, task.priority)}] "
             f"{task.title} - {due_details}"
         )
-        if not task.done and task.due is not None and task.due < date.today():
+        if not task.done and task.due is not None and task.due < clock.today():
             line = colorize(line, "red")
         print(line)
     print("─" * 60)

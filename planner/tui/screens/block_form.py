@@ -5,7 +5,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, Static
 
-from planner import core
+from planner import clock, core
 
 
 class BlockForm(ModalScreen[bool]):
@@ -18,7 +18,7 @@ class BlockForm(ModalScreen[bool]):
         super().__init__()
         self.task_data = task
         self.block_entry = block_entry
-        self.selected_date = selected_date or date.today()
+        self.selected_date = selected_date or clock.today()
         self._pending_values: tuple[str, str, str, str] | None = None
 
     def compose(self) -> ComposeResult:

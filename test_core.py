@@ -378,6 +378,8 @@ def test_legacy_spanish_block_data_loads_and_is_saved_in_english(task_files):
         "date": "2026-11-10",
         "start": "18:00",
         "end": "19:00",
+        "status": "planned",
+        "completed_at": None,
     }
 
 
@@ -1301,6 +1303,7 @@ def test_settings_default_to_monday_and_can_be_changed():
         "day_end": "18:00",
         "default_duration_minutes": 60,
         "max_candidates": 10,
+        "history_limit": 50,
     }
     assert core.load_settings() == defaults
     assert not core.SETTINGS_FILE.exists()
@@ -1321,6 +1324,7 @@ def test_review_settings_are_saved_and_old_settings_get_defaults():
         "day_end": "18:00",
         "default_duration_minutes": 60,
         "max_candidates": 10,
+        "history_limit": 50,
     }
     settings = core.save_settings(
         day_start="08:30",
@@ -1334,6 +1338,7 @@ def test_review_settings_are_saved_and_old_settings_get_defaults():
         "day_end": "17:30",
         "default_duration_minutes": 45,
         "max_candidates": 10,
+        "history_limit": 50,
     }
     assert core.load_settings() == settings
     with pytest.raises(ValueError, match="fit within"):

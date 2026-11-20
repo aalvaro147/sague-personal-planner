@@ -260,7 +260,7 @@ def test_day_review_summary_counts_empty_and_completed_days():
     completed = core.create_task("Finished")
     core.plan_block(completed.id, day.isoformat(), "09:00", "09:30")
     core.plan_block(completed.id, day.isoformat(), "10:00", "11:00")
-    core.complete_task(completed.id)
+    core.complete_task(completed.id, reference_date=day, now=datetime(2026, 11, 12, 12, 0))
     pending = core.create_task("Still pending")
     core.plan_block(pending.id, day.isoformat(), "11:00", "11:30")
 

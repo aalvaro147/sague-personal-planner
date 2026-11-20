@@ -6,7 +6,7 @@ from textual.events import Resize
 from textual.screen import Screen
 from textual.widgets import Button, Input, Label, ListItem, ListView, Static
 
-from planner import core
+from planner import clock, core
 from planner.tui.screens.block_form import BlockForm
 from planner.tui.screens.confirm_dialog import ConfirmDialog
 from planner.tui.screens.event_form import EventForm
@@ -32,8 +32,8 @@ class WeekScreen(Screen):
 
     def __init__(self) -> None:
         super().__init__()
-        self.selected_date = date.today()
-        self.selected_day: date | None = date.today()
+        self.selected_date = clock.today()
+        self.selected_day: date | None = clock.today()
         self.first_weekday = "mon"
         self.week_days: list[dict[str, object]] = []
         self.due_tasks: list[core.Task] = []
@@ -47,6 +47,8 @@ class WeekScreen(Screen):
             yield Button("Add task", id="add-task", variant="primary")
             yield Button("Tasks", id="open-tasks")
             yield Button("Events", id="open-events")
+            yield Button("Undo", id="undo")
+            yield Button("Redo", id="redo")
         with Horizontal(classes="date-toolbar"):
             yield Button("Previous week", id="previous-week")
             yield Button("This week", id="current-week")
@@ -131,7 +133,7 @@ class WeekScreen(Screen):
                     heading.label = day.strftime("%a %d")
                     heading.variant = (
                         "primary" if day == self.selected_day
-                        else "success" if day == date.today()
+                        else "success" if day == clock.today()
                         else "default"
                     )
                     summary = self.query_one(f"#{prefix}-summary-{day_key}", Static)
@@ -161,7 +163,8 @@ class WeekScreen(Screen):
             block = entry["block"]
             priority = PRIORITY_LABELS.get(task.priority, task.priority)
             marker = " ↻" if task.recurrence else ""
-            return f"{block.start} [T] {task.title}{marker} · {priority}"
+            status_prefix = "✓ " if getattr(block, "status", "planned") == "done" else ""
+            return f"{status_prefix}{block.start} [T] {task.title}{marker} · {priority}"
         event = entry["event"]
         marker = " ↻" if event.recurring else ""
         return f"{event.start} [E] {event.title}{marker}"
@@ -241,6 +244,10 @@ class WeekScreen(Screen):
             self.app.switch_mode("tasks")
         elif button_id == "open-events":
             self.app.switch_mode("events")
+        elif button_id == "undo":
+            self.app.action_undo()
+        elif button_id == "redo":
+            self.app.action_redo()
 
     def action_previous_week(self) -> None:
         self.selected_date -= timedelta(days=7)
@@ -255,8 +262,8 @@ class WeekScreen(Screen):
         self.run_worker(self.refresh_data, exclusive=True)
 
     def action_current_week(self) -> None:
-        self.selected_date = date.today()
-        self.selected_day = date.today()
+        self.selected_date = clock.today()
+        self.selected_day = clock.today()
         self.run_worker(self.refresh_data, exclusive=True)
 
     def action_previous_day(self) -> None:

@@ -1,15 +1,18 @@
 from datetime import date, timedelta
-from typing import Literal
+from typing import Any, Literal
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
 from textual.screen import ModalScreen, Screen
-from textual.widgets import Button, Input, Label, Static
+from textual.widgets import Button, Footer, Input, Label, Static
 
-from planner import core
-from planner.review import ReviewCandidate, ReviewCandidateSummary
+from planner import clock, core, review
+from planner.review import ReviewCandidate, ReviewCandidateSummary, ReviewSession
 from planner.tui.screens.confirm_dialog import ConfirmDialog
+from planner.tui.screens.habit_form import HabitForm
+from planner.tui.screens.task_form import TaskForm
 
 ReviewMode = Literal["plan", "close"]
 
@@ -91,14 +94,21 @@ class ReviewScreen(Screen):
     BINDINGS = [
         ("escape", "exit_review", "Exit review"),
         ("q", "exit_review", "Exit review"),
+        ("a", "add_item", "Add task"),
         ("s", "schedule_or_reschedule", "Schedule / reschedule"),
         ("k", "skip_or_leave", "Skip / leave"),
         ("d", "defer", "Defer"),
         ("x", "drop_task", "Drop"),
         ("g", "show_more", "Show more"),
         ("m", "mark_done", "Done"),
+        ("w", "worked_on", "Worked on it"),
+        ("e", "excused", "Excused"),
+        ("c", "catch_up", "Catch up"),
         ("l", "leave_block", "Leave"),
         ("o", "open_agenda", "Open agenda"),
+        Binding("u", "undo", "Undo", id="undo"),
+        Binding("U", "redo", "Redo", id="redo"),
+        Binding("ctrl+r", "redo", "Redo", show=False),
     ]
 
     def __init__(
@@ -109,28 +119,81 @@ class ReviewScreen(Screen):
         super().__init__()
         self.mode = mode
         self.review_date = review_date or (
-            date.today() + timedelta(days=1) if mode == "plan" else date.today()
+            clock.today() + timedelta(days=1) if mode == "plan" else clock.today()
         )
+        self.session = ReviewSession(self.mode, self.review_date)
         self.settings: dict[str, object] = {}
-        self.candidates: list[ReviewCandidate] = []
-        self.candidate_summary: ReviewCandidateSummary = {
-            "pending_count": 0,
-            "scheduled_count": 0,
-            "urgent_count": 0,
-            "unscheduled_count": 0,
-        }
-        self.unscheduled_limit = core.MAX_CANDIDATES
-        self.missed: list[core.BlockAgendaEntry] = []
-        self.index = 0
-        self.finished = False
-        self.rescheduled: list[str] = []
         self.suggested_slot: tuple[str, str] | None = None
         self._compact: bool = False
+
+    @property
+    def candidates(self) -> list[ReviewCandidate]:
+        return self.session.candidates
+
+    @candidates.setter
+    def candidates(self, val: list[ReviewCandidate]) -> None:
+        self.session.candidates = val
+
+    @property
+    def candidate_summary(self) -> ReviewCandidateSummary:
+        return self.session.candidate_summary
+
+    @candidate_summary.setter
+    def candidate_summary(self, val: ReviewCandidateSummary) -> None:
+        self.session.candidate_summary = val
+
+    @property
+    def unscheduled_limit(self) -> int:
+        return self.session.unscheduled_limit
+
+    @unscheduled_limit.setter
+    def unscheduled_limit(self, val: int) -> None:
+        self.session.unscheduled_limit = val
+
+    @property
+    def missed(self) -> list[core.BlockAgendaEntry]:
+        return self.session.missed
+
+    @missed.setter
+    def missed(self, val: list[core.BlockAgendaEntry]) -> None:
+        self.session.missed = val
+
+    @property
+    def index(self) -> int:
+        return self.session.current_index
+
+    @index.setter
+    def index(self, val: int) -> None:
+        self.session.current_index = val
+
+    @property
+    def finished(self) -> bool:
+        return self.session.finished
+
+    @finished.setter
+    def finished(self, val: bool) -> None:
+        self.session.finished = val
+
+    @property
+    def rescheduled(self) -> list[str]:
+        return self.session.rescheduled
+
+    @rescheduled.setter
+    def rescheduled(self, val: list[str]) -> None:
+        self.session.rescheduled = val
+
+    @property
+    def created_count(self) -> int:
+        return self.session.created_count
 
     def compose(self) -> ComposeResult:
         title = "PLAN TOMORROW" if self.mode == "plan" else "CLOSE THE DAY"
         with Horizontal(classes="top-nav"):
             yield Label(title, classes="brand")
+            yield Button("Undo", id="undo")
+            yield Button("Redo", id="redo")
+            if self.mode == "plan":
+                yield Button("Add task", id="review-add-task", variant="primary")
             yield Button("Review settings", id="review-settings")
             yield Button("Exit", id="exit-review")
         with Horizontal(id="review-layout"):
@@ -156,9 +219,17 @@ class ReviewScreen(Screen):
                     yield Button("Drop", id="drop", variant="error")
                 with Horizontal(classes="action-bar", id="close-actions"):
                     yield Button("Done", id="done", variant="success")
+                    yield Button("Worked on it", id="worked-on")
                     yield Button("Reschedule", id="reschedule", variant="primary")
                     yield Button("Defer", id="close-defer")
                     yield Button("Leave", id="leave")
+                with Horizontal(classes="action-bar", id="habit-actions"):
+                    yield Button("Done (d)", id="habit-done", variant="success")
+                    yield Button("Missed (m)", id="habit-missed", variant="error")
+                    yield Button("Excused (e)", id="habit-excused")
+                    yield Button("Later (k)", id="habit-later")
+                    yield Button("Add habit (a)", id="habit-add")
+                    yield Button("Catch up (c)", id="habit-catch-up")
                 yield Static("", id="review-message", classes="status")
                 yield Static("", id="review-final", classes="review-final")
                 with Horizontal(classes="action-bar", id="final-actions"):
@@ -169,10 +240,12 @@ class ReviewScreen(Screen):
             with VerticalScroll(id="review-sidebar", can_focus=True):
                 yield Label("", id="review-sidebar-heading", classes="section-heading")
                 yield Static("", id="review-agenda", classes="review-agenda", markup=False)
+        yield Footer()
 
     async def on_mount(self) -> None:
         self.query_one("#plan-actions", Horizontal).display = self.mode == "plan"
-        self.query_one("#close-actions", Horizontal).display = self.mode == "close"
+        self.query_one("#close-actions", Horizontal).display = False
+        self.query_one("#habit-actions", Horizontal).display = False
         self.query_one("#review-date-label", Label).display = self.mode == "close"
         self.query_one("#review-date", Input).display = self.mode == "close"
         self.query_one("#review-date", Input).value = self.review_date.isoformat()
@@ -183,24 +256,27 @@ class ReviewScreen(Screen):
         self.query_one("#open-agenda", Button).display = False
         try:
             self.settings = core.load_settings()
+            self.session.unscheduled_limit = int(self.settings["max_candidates"])
+            self.session.initialize()
             if self.mode == "plan":
-                self.unscheduled_limit = int(self.settings["max_candidates"])
-                self.candidate_summary = core.review_candidate_summary(
-                    self.review_date
-                )
-                self.candidates = core.review_candidates(self.review_date)
                 self.query_one("#review-sidebar-heading", Label).update(
                     f"Tomorrow · {self.review_date:%a %d %b}"
                 )
                 self._show_plan_candidate()
             else:
-                self.missed = core.missed_blocks(self.review_date)
                 self.query_one("#review-sidebar-heading", Label).update(
                     f"Today · {self.review_date:%a %d %b}"
                 )
-                self._show_missed_block()
+                if self.session.phase == "blocks":
+                    self.query_one("#close-actions", Horizontal).display = True
+                    self._show_missed_block()
+                elif self.session.phase == "habits":
+                    self._show_habit_step()
+                else:
+                    self._finish_close()
             self._adapt_layout(self.size.width)
             self._refresh_sidebar()
+            self.app._update_history_bindings()
         except (OSError, ValueError) as error:
             self.query_one("#review-progress", Label).update("Review unavailable")
             self.query_one("#review-item", Static).update(str(error))
@@ -230,7 +306,13 @@ class ReviewScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         button_id = event.button.id
-        if button_id == "review-settings":
+        if button_id == "undo":
+            self.action_undo()
+        elif button_id == "redo":
+            self.action_redo()
+        elif button_id == "review-add-task":
+            self.action_add_item()
+        elif button_id == "review-settings":
             self.app.push_screen(
                 ReviewSettingsDialog(self.settings),
                 self._settings_saved,
@@ -251,26 +333,117 @@ class ReviewScreen(Screen):
             self.action_drop_task()
         elif button_id == "done":
             self.action_mark_done()
+        elif button_id == "worked-on":
+            self.action_worked_on()
         elif button_id == "close-defer":
             self.action_defer()
         elif button_id == "leave":
             self.action_leave_block()
+        elif button_id == "habit-done":
+            self.action_habit_done()
+        elif button_id == "habit-missed":
+            self.action_habit_missed()
+        elif button_id == "habit-excused":
+            self.action_habit_excused()
+        elif button_id == "habit-later":
+            self.action_habit_later()
+        elif button_id == "habit-add":
+            self.action_add_item()
+        elif button_id == "habit-catch-up":
+            self.action_catch_up()
         elif button_id == "plan-tomorrow":
             self.app.push_screen(ReviewScreen("plan"))
         elif button_id == "show-more":
             self.action_show_more()
 
+    def action_undo(self) -> None:
+        self.app.action_undo()
+
+    def action_redo(self) -> None:
+        self.app.action_redo()
+
+    def action_add_item(self) -> None:
+        if self.mode == "close" and self.session.phase == "habits":
+            self.app.push_screen(
+                HabitForm(default_date=self.review_date),
+                self._after_habit_form,
+            )
+        else:
+            self.add_item()
+
+    def _after_habit_form(self, habit: dict[str, Any] | None) -> None:
+        if not habit:
+            return
+        self.session.record_habit_created(habit)
+        self._show_habit_step()
+        self.app._update_history_bindings()
+
+    def add_item(self) -> None:
+        self.app.push_screen(
+            TaskForm(default_date=self.review_date),
+            self._after_task_form,
+        )
+
+    def _after_task_form(self, saved: bool | None) -> None:
+        if not saved:
+            return
+        all_tasks = core.load_tasks()
+        known_ids = {c["task"].id for c in self.candidates}
+        for task in reversed(all_tasks):
+            if task.id not in known_ids and not task.deleted:
+                self.session.record_task_created(task)
+                break
+        self._show_plan_candidate()
+        self._refresh_sidebar()
+        self.app._update_history_bindings()
+
+    def on_history_action(self, action_type: str, result: core.HistoryResult) -> None:
+        if action_type == "undo":
+            self.session.handle_undo(result.affected_ids)
+        else:
+            self.session.handle_redo(result.affected_ids)
+
+        if self.mode == "plan":
+            if self.session.finished:
+                self._finish_plan()
+            else:
+                self.finished = False
+                self.query_one("#final-actions", Horizontal).display = False
+                self.query_one("#review-item", Static).display = True
+                self.query_one(".review-fields", Horizontal).display = True
+                self.query_one("#plan-actions", Horizontal).display = True
+                self.query_one("#review-due-label", Label).display = True
+                self.query_one("#review-due", Input).display = True
+                self._show_plan_candidate()
+        else:
+            if self.session.finished:
+                self._finish_close()
+            else:
+                self.finished = False
+                self.query_one("#final-actions", Horizontal).display = False
+                if self.session.phase == "blocks":
+                    self.query_one("#review-item", Static).display = True
+                    self.query_one(".review-fields", Horizontal).display = True
+                    self.query_one("#close-actions", Horizontal).display = True
+                    self.query_one("#habit-actions", Horizontal).display = False
+                    self.query_one("#review-due-label", Label).display = True
+                    self.query_one("#review-due", Input).display = True
+                    self._show_missed_block()
+                else:
+                    self._show_habit_step()
+        self._refresh_sidebar()
+
     def action_show_more(self) -> None:
         if self.mode != "plan" or not self.finished:
             return
         try:
-            self.unscheduled_limit += int(self.settings["max_candidates"])
-            self.candidate_summary = core.review_candidate_summary(
+            self.session.unscheduled_limit += int(self.settings["max_candidates"])
+            self.session.candidate_summary = core.review_candidate_summary(
                 self.review_date
             )
             candidates = core.review_candidates(
                 self.review_date,
-                unscheduled_limit=self.unscheduled_limit,
+                unscheduled_limit=self.session.unscheduled_limit,
             )
             known_ids = {candidate["task"].id for candidate in self.candidates}
             new_candidates = [
@@ -282,8 +455,8 @@ class ReviewScreen(Screen):
                 self._finish_plan()
                 return
             self.candidates.extend(new_candidates)
-            self.index = len(self.candidates) - len(new_candidates)
-            self.finished = False
+            self.session.current_index = len(self.candidates) - len(new_candidates)
+            self.session.finished = False
             self.query_one("#final-actions", Horizontal).display = False
             self.query_one("#review-item", Static).display = True
             self.query_one(".review-fields", Horizontal).display = True
@@ -322,17 +495,16 @@ class ReviewScreen(Screen):
         try:
             if reschedule:
                 core.reschedule_block(task.id, block.id, block_date, start, end)
-                self.rescheduled.append(
-                    f"{task.title} → {block_date.isoformat()} {start}-{end}"
-                )
-                self.index += 1
+                summary_str = f"{task.title} → {block_date.isoformat()} {start}-{end}"
+                self.session.record_reschedule(task.id, block.id, summary_str)
                 self._show_missed_block()
                 self._refresh_sidebar()
             else:
                 core.plan_block(task.id, block_date.isoformat(), start, end)
-                self.index += 1
+                self.session.record_schedule(task.id)
                 self._show_plan_candidate()
                 self._refresh_sidebar()
+            self.app._update_history_bindings()
         except (OSError, ValueError) as error:
             self._warn(str(error))
 
@@ -340,13 +512,20 @@ class ReviewScreen(Screen):
         if self.finished:
             return
         if self.mode == "plan":
-            self.index += 1
+            candidate = self.candidates[self.index]
+            self.session.record_skip(candidate["task"].id)
             self._show_plan_candidate()
         else:
-            self.action_leave_block()
+            if self.session.phase == "habits" or self.session.in_catch_up:
+                self.action_habit_later()
+            else:
+                self.action_leave_block()
 
     def action_defer(self) -> None:
         if self.finished:
+            return
+        if self.mode == "close" and (self.session.phase == "habits" or self.session.in_catch_up):
+            self.action_habit_done()
             return
         due_text = self.query_one("#review-due", Input).value.strip()
         try:
@@ -358,12 +537,13 @@ class ReviewScreen(Screen):
             else:
                 task = self.missed[self.index]["task"]
             core.defer_task(task.id, due_date)
-            self.index += 1
+            self.session.record_defer(task.id)
             if self.mode == "plan":
                 self._show_plan_candidate()
             else:
                 self._show_missed_block()
             self._refresh_sidebar()
+            self.app._update_history_bindings()
         except (OSError, ValueError) as error:
             self._warn(str(error))
 
@@ -379,32 +559,126 @@ class ReviewScreen(Screen):
     def action_mark_done(self) -> None:
         if self.mode != "close" or self.finished:
             return
+        if self.session.phase == "habits" or self.session.in_catch_up:
+            self.action_habit_missed()
+            return
         entry = self.missed[self.index]
         try:
-            core.complete_task(entry["task"].id, self.review_date)
+            core.complete_block(
+                entry["task"].id,
+                entry["block"].id,
+                complete_task=True,
+                reference_date=self.review_date,
+            )
             for missed_entry in self.missed:
                 if missed_entry["task"].id == entry["task"].id:
                     missed_entry["task"].done = True
-            self.index += 1
+                if missed_entry["block"].id == entry["block"].id:
+                    missed_entry["block"].status = "done"
+            self.session.record_done(entry["task"].id)
             self._show_missed_block()
             self._refresh_sidebar()
+            self.app._update_history_bindings()
+        except (OSError, ValueError) as error:
+            self._warn(str(error))
+
+    def action_worked_on(self) -> None:
+        if self.mode != "close" or self.finished:
+            return
+        if self.session.phase != "blocks":
+            return
+        entry = self.missed[self.index]
+        try:
+            core.complete_block(
+                entry["task"].id,
+                entry["block"].id,
+                complete_task=False,
+                reference_date=self.review_date,
+            )
+            for missed_entry in self.missed:
+                if missed_entry["block"].id == entry["block"].id:
+                    missed_entry["block"].status = "done"
+            self.session.record_worked_on(entry["task"].id, entry["block"].id)
+            self._show_missed_block()
+            self._refresh_sidebar()
+            self.app._update_history_bindings()
         except (OSError, ValueError) as error:
             self._warn(str(error))
 
     def action_leave_block(self) -> None:
         if self.mode != "close" or self.finished:
             return
-        self.index += 1
+        entry = self.missed[self.index]
+        self.session.record_leave(entry["task"].id)
         self._show_missed_block()
+
+    def action_habit_done(self) -> None:
+        self._record_habit_choice("done")
+
+    def action_habit_missed(self) -> None:
+        self._record_habit_choice("missed")
+
+    def action_habit_excused(self) -> None:
+        self._record_habit_choice("skipped")
+
+    def action_habit_later(self) -> None:
+        if self.session.in_catch_up:
+            if self.session.catch_up_index < len(self.session.catch_up_items):
+                item = self.session.catch_up_items[self.session.catch_up_index]
+                self.session.record_catch_up_skip(item["habit"]["id"], item["date"])
+        else:
+            if self.session.habit_index < len(self.session.habits):
+                h = self.session.habits[self.session.habit_index]
+                self.session.record_habit_skip(h["id"])
+        self._show_habit_step()
+
+    def action_excused(self) -> None:
+        if self.mode == "close" and (self.session.phase == "habits" or self.session.in_catch_up):
+            self.action_habit_excused()
+
+    def action_catch_up(self) -> None:
+        if self.mode == "close" and self.session.phase == "habits":
+            items = self.session.start_catch_up()
+            if items:
+                self._clear_message()
+                self._show_habit_step()
+
+    def _record_habit_choice(self, status: str) -> None:
+        try:
+            if self.session.in_catch_up:
+                if self.session.catch_up_index < len(self.session.catch_up_items):
+                    item = self.session.catch_up_items[self.session.catch_up_index]
+                    core.set_habit_status(
+                        item["habit"]["id"],
+                        item["date"],
+                        status,
+                        reference_date=self.review_date,
+                    )
+                    self.session.record_catch_up_decision(item["habit"]["id"], item["date"], status)
+            else:
+                if self.session.habit_index < len(self.session.habits):
+                    h = self.session.habits[self.session.habit_index]
+                    core.set_habit_status(
+                        h["id"],
+                        self.review_date,
+                        status,
+                        reference_date=self.review_date,
+                    )
+                    self.session.record_habit_decision(h["id"], status)
+            self._show_habit_step()
+            self.app._update_history_bindings()
+        except (OSError, ValueError) as error:
+            self._warn(str(error))
 
     def _drop_confirmed(self, task: core.Task, confirmed: bool | None) -> None:
         if not confirmed:
             return
         try:
             core.delete_task(task.id)
-            self.index += 1
+            self.session.record_drop(task.id)
             self._show_plan_candidate()
             self._refresh_sidebar()
+            self.app._update_history_bindings()
         except (OSError, ValueError) as error:
             self._warn(str(error))
 
@@ -417,9 +691,15 @@ class ReviewScreen(Screen):
         total_candidates = (
             self.candidate_summary["urgent_count"]
             + self.candidate_summary["unscheduled_count"]
+            + self.session.created_count
+        )
+        created_badge = (
+            f" (+{self.session.created_count} created)"
+            if self.session.created_count > 0
+            else ""
         )
         self.query_one("#review-progress", Label).update(
-            f"{self.index + 1} / {total_candidates}"
+            f"{self.index + 1} / {total_candidates}{created_badge}"
         )
         due = task.due.isoformat() if task.due else "No due date"
         self.query_one("#review-item", Static).update(
@@ -441,11 +721,17 @@ class ReviewScreen(Screen):
     def _show_missed_block(self) -> None:
         while (
             self.index < len(self.missed)
-            and self.missed[self.index]["task"].done
+            and (
+                self.missed[self.index]["task"].done
+                or getattr(self.missed[self.index]["block"], "status", "planned") == "done"
+            )
         ):
             self.index += 1
         if self.index >= len(self.missed):
-            self._finish_close()
+            if self.session.habits:
+                self._show_habit_step()
+            else:
+                self._finish_close()
             return
         entry = self.missed[self.index]
         task = entry["task"]
@@ -467,6 +753,59 @@ class ReviewScreen(Screen):
         )
         self._clear_message()
         self._suggest_reschedule_slot()
+
+    def _show_habit_step(self) -> None:
+        if self.session.in_catch_up:
+            if self.session.catch_up_index >= len(self.session.catch_up_items):
+                self.session.in_catch_up = False
+                self._show_habit_step()
+                return
+            item = self.session.catch_up_items[self.session.catch_up_index]
+            h = item["habit"]
+            d_str = item["date"]
+            self.query_one("#review-progress", Label).update(
+                f"Catching up ({d_str}) · {self.session.catch_up_index + 1} / {len(self.session.catch_up_items)}"
+            )
+            self.query_one("#review-item", Static).update(
+                f"{h['name']}\nDate: {d_str} · Status: unlogged"
+            )
+        else:
+            if self.session.habit_index >= len(self.session.habits):
+                self._finish_close()
+                return
+            h = self.session.habits[self.session.habit_index]
+            status_str = h.get("status", "unlogged")
+            streak = h.get("current_streak", 0)
+            self.query_one("#review-progress", Label).update(
+                f"Habits {self.session.habit_index + 1} / {len(self.session.habits)}"
+            )
+            self.query_one("#review-item", Static).update(
+                f"{h['name']}\nCurrent streak: {streak}-day streak · Status: {status_str}"
+            )
+
+        self.query_one("#review-item", Static).display = True
+        self.query_one(".review-fields", Horizontal).display = False
+        self.query_one("#review-date-label", Label).display = False
+        self.query_one("#review-date", Input).display = False
+        self.query_one("#review-due-label", Label).display = False
+        self.query_one("#review-due", Input).display = False
+        self.query_one("#plan-actions", Horizontal).display = False
+        self.query_one("#close-actions", Horizontal).display = False
+        self.query_one("#habit-actions", Horizontal).display = True
+
+        if not self.session.in_catch_up and self.session.habit_index == 0:
+            unlogged = core.habits_unlogged(days=3, end_date=self.review_date)
+            if unlogged:
+                count_days = len(unlogged)
+                day_word = "day" if count_days == 1 else "days"
+                self._set_message(
+                    f"{count_days} earlier {day_word} have unlogged habits. Press [c] to catch up."
+                )
+                self.query_one("#habit-catch-up", Button).display = True
+            else:
+                self.query_one("#habit-catch-up", Button).display = False
+        else:
+            self.query_one("#habit-catch-up", Button).display = False
 
     def action_open_agenda(self) -> None:
         target_date = self.review_date
@@ -696,8 +1035,13 @@ class ReviewScreen(Screen):
     def _finish_plan(self) -> None:
         self.finished = True
         self.suggested_slot = None
+        created_badge = (
+            f" (+{self.session.created_count} created)"
+            if self.session.created_count > 0
+            else ""
+        )
         self.query_one("#review-progress", Label).update(
-            f"Plan for {self.review_date:%A, %B %d}"
+            f"Plan for {self.review_date:%A, %B %d}{created_badge}"
         )
         self.query_one("#review-item", Static).display = False
         self.query_one(".review-fields", Horizontal).display = False
@@ -747,7 +1091,18 @@ class ReviewScreen(Screen):
         self.query_one("#review-due-label", Label).display = False
         self.query_one("#review-due", Input).display = False
         self.query_one("#close-actions", Horizontal).display = False
+        self.query_one("#habit-actions", Horizontal).display = False
+        habits_today = core.habits_for_day(self.review_date)
+        done_habits = [h for h in habits_today if h.get("status") == "done"]
+        total_habits = len(habits_today)
+
+        total_blocks = len([
+            b for t in core.load_tasks() if not t.deleted
+            for b in t.blocks if b.date == self.review_date
+        ])
+
         lines = [
+            f"Today: {summary['completed_blocks']}/{total_blocks} blocks done",
             f"Tasks done: {summary['done_tasks']}",
             f"Tasks not done: {summary['not_done_tasks']}",
             f"Blocks completed: {summary['completed_blocks']}",
@@ -756,6 +1111,13 @@ class ReviewScreen(Screen):
             f"Tasks rescheduled: {len(self.rescheduled)}",
         ]
         lines.extend(self.rescheduled)
+        if total_habits > 0:
+            lines.append(f"Habits: {len(done_habits)}/{total_habits} done")
+            for h in habits_today:
+                streak = h.get("current_streak", 0)
+                if streak > 0:
+                    lines.append(f"{h['name']}: {streak}-day streak")
+
         self.query_one("#review-final", Static).update("\n".join(lines))
         if not self.missed:
             self.query_one("#review-final", Static).update(

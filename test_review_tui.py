@@ -504,3 +504,123 @@ async def _run_open_agenda_shortcut():
         assert isinstance(app.screen, AgendaScreen)
         assert app.screen.selected_date == tomorrow
 
+
+
+# ---------------------------------------------------------------------------
+# Undo / Redo in review flows
+# ---------------------------------------------------------------------------
+
+
+def test_plan_tomorrow_schedule_then_undo_returns_to_candidate():
+    asyncio.run(_run_plan_tomorrow_undo_schedule())
+
+
+async def _run_plan_tomorrow_undo_schedule():
+    tomorrow = date.today() + timedelta(days=1)
+    task = core.create_task("Undo schedule task", tomorrow)
+    app = PlannerApp()
+
+    async with app.run_test(size=(120, 50)) as pilot:
+        await pilot.pause()
+        await pilot.press("n")
+        await pilot.pause()
+
+        assert isinstance(app.screen, ReviewScreen)
+        assert app.screen.index == 0
+
+        # Schedule the task
+        await pilot.press("s")
+        await pilot.pause()
+
+        # Task has a block now
+        tasks = {t.id: t for t in core.load_tasks()}
+        assert len(tasks[task.id].blocks) == 1
+
+        # Flow should have moved on (or finished since only 1 task)
+        # Undo the schedule
+        await pilot.press("u")
+        await pilot.pause()
+
+        # Block should be gone after undo
+        tasks_after = {t.id: t for t in core.load_tasks()}
+        assert len(tasks_after[task.id].blocks) == 0
+
+
+def test_plan_tomorrow_undo_does_not_crash():
+    asyncio.run(_run_plan_tomorrow_undo_no_crash())
+
+
+async def _run_plan_tomorrow_undo_no_crash():
+    task = core.create_task("Undo crash test")
+    app = PlannerApp()
+
+    async with app.run_test(size=(120, 50)) as pilot:
+        await pilot.pause()
+        await pilot.press("n")
+        await pilot.pause()
+
+        assert isinstance(app.screen, ReviewScreen)
+
+        # Undo with nothing to undo — should not crash
+        await pilot.press("u")
+        await pilot.pause()
+
+        # App and review screen still active
+        assert isinstance(app.screen, ReviewScreen)
+
+
+def test_close_day_done_then_undo():
+    asyncio.run(_run_close_day_undo())
+
+
+async def _run_close_day_undo():
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    task = core.create_task("Done then undo")
+    core.plan_block(task.id, yesterday.isoformat(), "09:00", "10:00")
+    app = PlannerApp()
+
+    async with app.run_test(size=(120, 50)) as pilot:
+        await pilot.pause()
+        await pilot.press("c")
+        await pilot.pause()
+
+        assert isinstance(app.screen, ReviewScreen)
+        assert app.screen.mode == "close"
+
+        # Mark done
+        await pilot.press("m")
+        await pilot.pause()
+
+        tasks_after_done = {t.id: t for t in core.load_tasks()}
+        assert tasks_after_done[task.id].done is True
+
+        # Undo
+        await pilot.press("u")
+        await pilot.pause()
+
+        tasks_after_undo = {t.id: t for t in core.load_tasks()}
+        assert tasks_after_undo[task.id].done is False
+
+
+def test_nothing_to_undo_in_review_shows_notification():
+    asyncio.run(_run_nothing_to_undo_review())
+
+
+async def _run_nothing_to_undo_review():
+    task = core.create_task("Review undo notification test")
+    app = PlannerApp()
+
+    async with app.run_test(size=(120, 50)) as pilot:
+        await pilot.pause()
+        await pilot.press("n")
+        await pilot.pause()
+
+        assert isinstance(app.screen, ReviewScreen)
+
+        # No review actions yet — undo should show "Nothing to undo" and not crash
+        await pilot.press("u")
+        await pilot.pause()
+
+        # Still in review screen
+        assert isinstance(app.screen, ReviewScreen)

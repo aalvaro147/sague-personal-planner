@@ -21,6 +21,8 @@ class EventsScreen(Screen):
             yield Button("Agenda", id="open-agenda")
             yield Button("Week", id="open-week")
             yield Button("Tasks", id="open-tasks")
+            yield Button("Undo", id="undo")
+            yield Button("Redo", id="redo")
         with Horizontal(classes="filter-toolbar"):
             yield Static("Events today and later", classes="status")
             yield Button("Add event", id="add-event", variant="primary")
@@ -67,6 +69,10 @@ class EventsScreen(Screen):
             self.app.switch_mode("tasks")
         elif button_id == "open-week":
             self.app.switch_mode("week")
+        elif button_id == "undo":
+            self.app.action_undo()
+        elif button_id == "redo":
+            self.app.action_redo()
         elif button_id == "add-event":
             self.add_item()
         elif button_id == "edit-event":
